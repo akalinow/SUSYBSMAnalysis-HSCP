@@ -186,7 +186,15 @@ const   float Pileup_MC_Startup2015_25ns[100] = {4.8551E-07, 1.74806E-06, 3.3086
 
 // function used to define interactively the directory containing the EDM files
 // you are please to add the line for your case and not touch the line of the other users
-void InitBaseDirectory(){  
+void InitBaseDirectory(std::string localPath=""){
+
+  if(localPath.size()){
+    BaseDirectory= localPath;
+    printf("Accessing local files using BaseDirectory = %s\n.", BaseDirectory.c_str());
+    return;
+  }
+  
+  
    char* analystTmp=getenv("USER");
    char* hostTmp   =getenv("HOSTNAME");
    char* remoteStoragePath =getenv("REMOTESTORAGEPATH");
@@ -215,6 +223,8 @@ void InitBaseDirectory(){
       BaseDirectory = "/storage/data/cms/store/user/jozobec/HSCP2016/"; // run2 ingrid
    }else if(host.find(".cis.gov.pl")!=std::string::npos){
       BaseDirectory = "root://se.cis.gov.pl//cms/store/user/fruboes/HSCP/15_03_25_HSCP_Run2EDMFiles/"; // run2 Swierk
+   }else if(host.find("akalinow")!=std::string::npos){
+      BaseDirectory = "/home/akalinow/scratch/CMS/HSCP/Data/HSCP_2017/SingleMuon/2017Apr25/180426_092321/0000/"; // run2 Swierk
    }else{
       BaseDirectory = "/storage/data/cms/store/user/jozobec/HSCP2016/";  //for run1
       printf("YOUR MACHINE (%s) IS NOT KNOWN --> please add your machine to the 'InitBaseDirectory' function of 'Analysis_Global.h'\n", host.c_str());

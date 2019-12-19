@@ -110,8 +110,10 @@ void GetSampleDefinition(std::vector<stSample>& samples, std::string sampleTxtFi
 		pFile = fopen (samples_path, "r");
 		if (!pFile){printf("Still cannot open Analysis_Samples.txt ... giving up!\n"); return;}
 	 }
-         stSample newSample;      
-         while(newSample.readFromFile(pFile)!=EOF){samples.push_back(newSample);}
+         stSample newSample;
+         while(newSample.readFromFile(pFile)!=EOF){
+	   samples.push_back(newSample);
+	 }
       fclose(pFile);
 }
 
@@ -242,7 +244,7 @@ unsigned long GetInitialNumberOfMCEvent(const vector<string>& fileNames)
 {
    unsigned long Total = 0;
    for(unsigned int f=0;f<fileNames.size();f++){
-      TFile *file;
+      TFile *file = 0;
       size_t place=fileNames[f].find("dcache");
       if(place!=string::npos){
  	 string name=fileNames[f];

@@ -11,7 +11,7 @@ cmsenv
 
 git cms-init
 # for the following step you should have a GitHub's ssh key
-git clone git@github.com:CMS-HSCP/SUSYBSMAnalysis-HSCP.git SUSYBSMAnalysis/HSCP 
+git clone git@github.com:CMS-HSCP/SUSYBSMAnalysis-HSCP.git SUSYBSMAnalysis/HSCP -b Run2_2017
 
 # Before compile, hide BigNTuplizer 
 pushd SUSYBSMAnalysis/HSCP/plugins
@@ -39,6 +39,18 @@ Steps:
 3. test/UsefulScripts/MuonTimingStudy
 
 4. ...
+
+## Run the Step1 on CRAB
+Update setting in the CRAB launcher test/AnalysisCode/submitJobs_Launch_1.py. You may want to update:
+* localisation of the output files: config.Data.outLFNDirBase
+* list of files to be run on: datasets. You can run on all samples in Priscilla's direcotry
+  listed in datasetsRun2017.py file
+
+
+```
+cd test/AnalysisCode/
+./submitJobs_Launch_1.py
+```
 
 
 

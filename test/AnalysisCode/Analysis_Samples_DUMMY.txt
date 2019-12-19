@@ -1,0 +1,6 @@
+#RELEASE, SAMPLE TYPE (0=data, 1=bckg, 2=signal, 3=signal systematic), SIGNAL NAME, INPUT FILE NAME, Legend Entry, PILEUP Distribution, Signal Mass, Sample Cross-section, PLOTTING FLAG (0=false, 1=true), Weight for events with 0, 1 and 2 charged HSCP in the event
+#
+### DATA SAMPLES
+#
+### 2017 DATA
+"CMSSW_8_0", 0, "Data13TeV16"                       , "DUMMY"                   , "Data"                                                   , "NoPU"  ,      0,  0.0000000000E+00, 0, 0.000, 0.000, 0.000

@@ -35,7 +35,6 @@ namespace reweight{ class PoissonMeanShifter;}
 #include "PhysicsTools/Utilities/interface/LumiReWeighting.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
-
 using namespace fwlite;
 using namespace reco;
 using namespace susybsm;
@@ -60,7 +59,8 @@ using namespace reweight;
 /////////////////////////// FUNCTION DECLARATION /////////////////////////////
 
 void InitHistos(stPlots* st=NULL);
-void Analysis_Step1_EventLoop(char* SavePath);
+void EventLoop(char* SavePath);
+void Analysis_Step1_EventLoop(string MODE="COMPILE", int TypeMode_=0, string InputSampleName="");
 
 bool PassTrigger(const fwlite::ChainEvent& ev, bool isData, bool isCosmic=false, L1BugEmulator* emul=NULL);
 bool   PassPreselection(const susybsm::HSCParticle& hscp, const DeDxHitInfo* dedxHits, const reco::DeDxData* dedxSObj, const reco::DeDxData* dedxMObj, const reco::MuonTimeExtra* tof, const reco::MuonTimeExtra* dttof, const reco::MuonTimeExtra* csctof, const fwlite::ChainEvent& ev, stPlots* st=NULL, const double& GenBeta=-1, bool RescaleP=false, const double& RescaleI=0.0, const double& RescaleT=0.0);
@@ -120,7 +120,7 @@ HIPTrackLossEmulator HIPTrackLossEmul;
 bool useClusterCleaning = true;
 /////////////////////////// CODE PARAMETERS /////////////////////////////
 
-void Analysis_Step1_EventLoop(string MODE="COMPILE", int TypeMode_=0, string InputSampleName="")
+void Analysis_Step1_EventLoop(string MODE, int TypeMode_, string InputSampleName)
 {
    if(MODE=="COMPILE")return;
 
@@ -222,7 +222,7 @@ void Analysis_Step1_EventLoop(string MODE="COMPILE", int TypeMode_=0, string Inp
    sprintf(Command,"mkdir -p %s",Buffer); system(Command);
 
    // get all the samples and clean the list to keep only the one we want to run on... Also initialize the BaseDirectory
-   InitBaseDirectory();
+   InitBaseDirectory(MODE.c_str());
    GetSampleDefinition(samples);
    samplesFull = samples;
    if(MODE.find("ANALYSE_")==0){
@@ -234,9 +234,13 @@ void Analysis_Step1_EventLoop(string MODE="COMPILE", int TypeMode_=0, string Inp
       for(unsigned int s=0;s<samples.size();s++){samples[s].print();}
       printf("----------------------------------------------------------------------------------------------------------------------------------------------------\n\n");
    }else{
-      printf("You must select a MODE:\n");
-      printf("MODE='ANALYSE_X_to_Y'   : Will run the analysis on the samples with index in the range [X,Y]\n"); 
-      return;
+      printf("MODE used as local path for the input data.\n");
+      printf("----------------------------------------------------------------------------------------------------------------------------------------------------\n");
+      printf("Run on the following samples:\n");
+      int sampleIdStart=5, sampleIdEnd=5;
+      keepOnlyTheXtoYSamples(samples,sampleIdStart,sampleIdEnd);
+      keepOnlyValidSamples(samples);
+      for(unsigned int s=0;s<samples.size();s++){samples[s].print();}      
    }
 
 std::cout<<"A\n";
@@ -262,22 +266,23 @@ std::cout<<"A1\n";
       for(int i=0; i<100; ++i) TrueDist    .push_back(TrueDist2016_f[i]);
       for(int i=0; i<100; ++i) TrueDistSyst.push_back(TrueDist2016_XSecShiftUp_f[i]);
    }
-   
-std::cout<<"A2\n";
 
-   LumiWeightsMC     = edm::LumiReWeighting(BgLumiMC, TrueDist);
-std::cout<<"A3\n";
-
-   LumiWeightsMCSyst = edm::LumiReWeighting(BgLumiMC, TrueDistSyst);
+   if(samples[0].Type>0){
+     std::cout<<"A2\n"; 
+     LumiWeightsMC     = edm::LumiReWeighting(BgLumiMC, TrueDist);
+     std::cout<<"A3\n";     
+     LumiWeightsMCSyst = edm::LumiReWeighting(BgLumiMC, TrueDistSyst);
+   }
 
 std::cout<<"B\n";
 
 
    //create histogram file and run the analyis
-   HistoFile = new TFile((string(Buffer)+"/Histos_"+samples[0].Name+"_"+ReplacePartOfString(samples[0].FileName, "/", "_")+".root").c_str(),"RECREATE");
+   //TEST AK HistoFile = new TFile((string(Buffer)+"/Histos_"+samples[0].Name+"_"+ReplacePartOfString(samples[0].FileName, "/", "_")+".root").c_str(),"RECREATE");
+ HistoFile = new TFile("Histos.root","RECREATE");
 std::cout<<"C\n";
 
-   Analysis_Step1_EventLoop(Buffer);
+   EventLoop(Buffer);
 std::cout<<"Z\n";
 
    HistoFile->Write();
@@ -286,12 +291,14 @@ std::cout<<"Z\n";
 }
 
 TVector3 getOuterHitPos(const DeDxHitInfo* dedxHits){
+
      TVector3 point(0,0,0);
      if(!dedxHits)return point;
-     double outerDistance=-1;
+     double outerDistance=-1;     
      for(unsigned int h=0;h<dedxHits->size();h++){
-        DetId detid(dedxHits->detId(h));  
+        DetId detid(dedxHits->detId(h));
         moduleGeom* geomDet = moduleGeom::get(detid.rawId());
+	if(!geomDet) return point;//FIX ME AK
         TVector3 hitPos = geomDet->toGlobal(TVector3(dedxHits->pos(h).x(), dedxHits->pos(h).y(), dedxHits->pos(h).z())); 
         if(hitPos.Mag()>outerDistance){outerDistance=hitPos.Mag();  point=hitPos;}
      }
@@ -301,8 +308,12 @@ TVector3 getOuterHitPos(const DeDxHitInfo* dedxHits){
 // check if the event is passing trigger or not --> note that the function has two part (one for 2011 analysis and the other one for 2012)
 bool PassTrigger(const fwlite::ChainEvent& ev, bool isData, bool isCosmic, L1BugEmulator* emul)
 {
-   edm::TriggerResultsByName tr = ev.triggerResultsByName("HLT");
-   if(!tr.isValid())         tr = ev.triggerResultsByName("MergeHLT");
+  
+  fwlite::Handle < edm::TriggerResults > trHandle;
+  trHandle.getByLabel(ev, "TriggerResults", "", "HLT");
+  if(!trHandle.isValid())return false;
+  
+   edm::TriggerResultsByName tr = ev.triggerResultsByName(*trHandle);
    if(!tr.isValid())return false;
 
    if(passTriggerPatterns(tr, "HLT_PFMET170_NoiseCleaned_v*") || passTriggerPatterns(tr, "HLT_PFMET170_HBHECleaned_v*"))return true;
@@ -442,7 +453,7 @@ bool PassPreselection(const susybsm::HSCParticle& hscp, const DeDxHitInfo* dedxH
    if(TypeMode!=3 && track->hitPattern().numberOfValidPixelHits()<GlobalMinNOPH)return false;
    if(TypeMode!=3 && track->validFraction()<GlobalMinFOVH)return false;
 
-   int missingHitsTillLast = track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS) + track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);;
+   unsigned int missingHitsTillLast = track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::MISSING_INNER_HITS) + track->hitPattern().trackerLayersWithoutMeasurement(reco::HitPattern::TRACK_HITS);;
    double validFractionTillLast = track->found()<=0?-1:track->found() / float(track->found() + missingHitsTillLast);
   
    if(st){st->BS_TNOHFractionTillLast->Fill(validFractionTillLast,Event_Weight);
@@ -697,10 +708,9 @@ bool PassPreselection(const susybsm::HSCParticle& hscp, const DeDxHitInfo* dedxH
    if(st){if(GenBeta>=0)st->Beta_PreselectedC->Fill(GenBeta, Event_Weight);
           if(DZSB  && OASB)st->BS_Dxy_Cosmic->Fill(dxy, Event_Weight);
           if(DXYSB && OASB)st->BS_Dz_Cosmic->Fill(dz, Event_Weight);
-          if(DXYSB && DZSB)st->BS_OpenAngle   if(TypeMode==5 && fabs(dz)>GlobalMaxDZ) DZSB = true;
-_Cosmic->Fill(OpenAngle,Event_Weight);
-
-
+          //if(DXYSB && DZSB)st->BS_Cosmic->Fill(OpenAngle,Event_Weight);//TEST AK
+	  //if(TypeMode==5 && fabs(dz)>GlobalMaxDZ) DZSB = true;//TEST AK
+	  
           TVector3 outerHit = getOuterHitPos(dedxHits);
           TVector3 vertex(vertexColl[highestPtGoodVertex].position().x(), vertexColl[highestPtGoodVertex].position().y(), vertexColl[highestPtGoodVertex].position().z());
           st->BS_LastHitDXY  ->Fill((outerHit).Perp(),Event_Weight);
@@ -1039,7 +1049,7 @@ void Analysis_FillControlAndPredictionHist(const susybsm::HSCParticle& hscp, con
 
 
 // Looping on all events, tracks, selection and check how many events are entering the mass distribution
-void Analysis_Step1_EventLoop(char* SavePath)
+void EventLoop(char* SavePath)
 {
    //Initialize a RandomNumberGenerator
    TRandom3* RNG = new TRandom3();
@@ -1060,21 +1070,21 @@ void Analysis_Step1_EventLoop(char* SavePath)
 
 std::cout<<"D\n";
 
-      char basepath [200]; sprintf (basepath, "%s/src/SUSYBSMAnalysis/HSCP/test/AnalysisCode/", getenv("CMSSW_BASE"));
+      char basepath [200]; sprintf (basepath, "%s/src/SUSYBSMAnalysis/HSCP/", getenv("CMSSW_BASE"));
       string analysis_path (basepath);
       if(isData){ 
          dEdxSF [0] = 1.00000;
          dEdxSF [1] = (is2016)?1.41822:1.21836;
-         dEdxTemplates = loadDeDxTemplate((!is2016)?(analysis_path+"../../data/Data13TeV_Deco_SiStripDeDxMip_3D_Rcd_v2_CCwCI.root"):(analysis_path+"../../data/Data13TeV16_dEdxTemplate.root"), true);
+         dEdxTemplates = loadDeDxTemplate((!is2016)?(analysis_path+"/data/Data13TeV_Deco_SiStripDeDxMip_3D_Rcd_v2_CCwCI.root"):(analysis_path+"/data/Data13TeV16_dEdxTemplate.root"), true);
       }else{  
          dEdxSF [0] = (is2016)?1.09711:1.09708;
          dEdxSF [1] = (is2016)?1.09256:1.01875;
-         dEdxTemplates = loadDeDxTemplate((!is2016)?(analysis_path+"../../data/MC13TeV_Deco_SiStripDeDxMip_3D_Rcd_v2_CCwCI.root"):(analysis_path+"../../data/MC13TeV16_dEdxTemplate.root"), true);
+         dEdxTemplates = loadDeDxTemplate((!is2016)?(analysis_path+"/data/MC13TeV_Deco_SiStripDeDxMip_3D_Rcd_v2_CCwCI.root"):(analysis_path+"/data/MC13TeV16_dEdxTemplate.root"), true);
       }
 
 std::cout<<"E\n";
 
-      if(isData){    trackerCorrector.LoadDeDxCalibration(analysis_path+"../../data/Data13TeVGains_v2.root"); 
+      if(isData){    trackerCorrector.LoadDeDxCalibration(analysis_path+"/data/Data13TeVGains_v2.root"); 
       }else{ trackerCorrector.TrackerGains = NULL; //FIXME check gain for MC
       }
 
@@ -1126,9 +1136,9 @@ std::cout<<"F\n";
       double* MaxMass_SystHUp   = new double[CutPt.size()];
       double* MaxMass_SystHDown = new double[CutPt.size()];
 
-      moduleGeom::loadGeometry(analysis_path+"../../data/CMS_GeomTree.root");
+      moduleGeom::loadGeometry(analysis_path+"/data/CMS_GeomTree.root");
       muonTimingCalculator tofCalculator;
-      tofCalculator.loadTimeOffset(analysis_path+"../../data/MuonTimeOffset.txt");
+      tofCalculator.loadTimeOffset(analysis_path+"/data/MuonTimeOffset.txt");
       unsigned int CurrentRun = 0;
 
 
@@ -1211,9 +1221,11 @@ std::cout<<"G\n";
                SamplePlots->Gen_DecayLength->Fill(HSCPDLength1, Event_Weight); SamplePlots->Gen_DecayLength->Fill(HSCPDLength2, Event_Weight);
 
                GetGenHSCPBeta(genColl,HSCPGenBeta1,HSCPGenBeta2,false);
-               if(HSCPGenBeta1>=0)SamplePlots->Beta_Gen      ->Fill(HSCPGenBeta1, Event_Weight);  if(HSCPGenBeta2>=0)SamplePlots->Beta_Gen       ->Fill(HSCPGenBeta2, Event_Weight);
+               if(HSCPGenBeta1>=0)SamplePlots->Beta_Gen->Fill(HSCPGenBeta1, Event_Weight);
+	       if(HSCPGenBeta2>=0)SamplePlots->Beta_Gen->Fill(HSCPGenBeta2, Event_Weight);
                GetGenHSCPBeta(genColl,HSCPGenBeta1,HSCPGenBeta2,true);
-               if(HSCPGenBeta1>=0)SamplePlots->Beta_GenCharged->Fill(HSCPGenBeta1, Event_Weight); if(HSCPGenBeta2>=0)SamplePlots->Beta_GenCharged->Fill(HSCPGenBeta2, Event_Weight);
+               if(HSCPGenBeta1>=0)SamplePlots->Beta_GenCharged->Fill(HSCPGenBeta1, Event_Weight);
+	       if(HSCPGenBeta2>=0)SamplePlots->Beta_GenCharged->Fill(HSCPGenBeta2, Event_Weight);
 
                
 	       for(unsigned int g=0;g<genColl.size();g++) {
@@ -1780,7 +1792,7 @@ double SegSep(const susybsm::HSCParticle& hscp, const fwlite::ChainEvent& ev, do
 //Counts the number of muon stations used in track fit only counting DT and CSC stations.
 int  muonStations(const reco::HitPattern& hitPattern) {
   int stations[4] = { 0,0,0,0 };
-  for (int i=0; i<hitPattern.numberOfHits(reco::HitPattern::HitCategory::TRACK_HITS); i++) {
+  for (int i=0; i<hitPattern.numberOfAllHits(reco::HitPattern::HitCategory::TRACK_HITS); i++) {
     uint32_t pattern = hitPattern.getHitPattern(reco::HitPattern::HitCategory::TRACK_HITS, i );
     if(pattern == 0) break;
     if(hitPattern.muonHitFilter(pattern) && (int(hitPattern.getSubStructure(pattern)) == 1 || int(hitPattern.getSubStructure(pattern)) == 2) && hitPattern.getHitType(pattern) == 0){

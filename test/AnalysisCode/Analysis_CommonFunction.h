@@ -395,7 +395,6 @@ void  GetGenHSCPBeta (const std::vector<reco::GenParticle>& genColl, double& bet
 
       //code below copied from disapearing track source code.  FIXME we should make sure that the logic is ok.
       //https://raw.githubusercontent.com/OSU-CMS/DisappTrks/master/SignalMC/plugins/DecayAnalyzer.cc  
-      const reco::Candidate* mother   = &genColl[g];
       const reco::Candidate* daughter = &genColl[g];
 
       // Descend the decay chain until no daughters have the same PDG ID as mcParticle.
@@ -404,7 +403,6 @@ void  GetGenHSCPBeta (const std::vector<reco::GenParticle>& genColl, double& bet
         for (unsigned int i=0; i<daughter->numberOfDaughters(); i++) {
           if (daughter->daughter(i)->pdgId() == genColl[g].pdgId()) {
             foundDauSamePdgId = true;
-            mother = daughter;
             daughter = daughter->daughter(i);
             break;
           }
@@ -426,7 +424,6 @@ void  GetGenHSCPBeta (const std::vector<reco::GenParticle>& genColl, double& bet
        }
        if(idxDauLastVtx<0)continue;
  
-       mother = daughter;
        daughter = daughter->daughter(idxDauLastVtx);
 
        TVector3 source (genColl[g].vx (), genColl[g].vy (), genColl[g].vz ());

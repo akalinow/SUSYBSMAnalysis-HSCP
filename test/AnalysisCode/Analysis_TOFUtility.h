@@ -693,7 +693,7 @@ class muonTimingCalculator{
                     }
 
                     unsigned int segsize = seg.size();
-                    if (segsize<theHitsMin_) continue;
+                    if (segsize<(unsigned int)theHitsMin_) continue;
 
                     double a=0, b=0;
                     std::vector <double> hitxl,hitxr,hityl,hityr;
