@@ -57,4 +57,4 @@ Analysis_Step1_EventLoop(localPath, 0,  "Data13TeV16")
 
 
 #Run dummy CMSSW configuration to produce the framework report
-cmsRun -j FrameworkJobReport.xml -p PSet.py
+os.system("cmsRun -j FrameworkJobReport.xml -p PSet.py")
