@@ -28,7 +28,6 @@ def prepareCrabCfg(dataset,
     config.JobType.allowUndistributedCMSSW = True
     config.JobType.scriptExe = 'run_Analysis_Step1_tmp.py'
     config.JobType.outputFiles = ['Histos.root']
-    config.JobType.inputFiles = ['FrameworkJobReport.xml']
     config.JobType.inputFiles = ['Analysis_CommonFunction.h', 'Analysis_Global.h', 'Analysis_Samples.h', 'Analysis_Samples_DUMMY.txt', 'Analysis_Step1_EventLoop.C', 'Analysis_PlotFunction.h', 'Analysis_PlotStructure.h', 'Analysis_TOFUtility.h', 'tdrstyle.C']
 
     shortName = publish_data_suffix
@@ -37,7 +36,7 @@ def prepareCrabCfg(dataset,
 
     config.Data.outLFNDirBase = '/store/user/akalinow/HSCP/'+publish_data_suffix+"/"
     config.Data.outputDatasetTag = shortName
-    config.Data.unitsPerJob = eventsPerJob
+    config.Data.unitsPerJob = 1
     config.Data.totalUnits = 1    
     out = open('crabTmp.py','w')
     out.write(config.pythonise_())
@@ -58,5 +57,5 @@ for aDataset in datasets:
     prepareCrabCfg(dataset=aDataset,
                    eventsPerJob=eventsPerJob,
                    storage_element="T2_PL_Swierk",
-                   publish_data_suffix = "HSCP_Run2017_Test2")                  
+                   publish_data_suffix = "HSCP_Run2017_Test5")                  
 

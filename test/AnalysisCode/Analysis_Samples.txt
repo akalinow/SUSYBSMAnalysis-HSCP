@@ -3,4 +3,4 @@
 ### DATA SAMPLES
 #
 ### 2017 DATA
-"CMSSW_8_0", 0, "Data13TeV16"                       , "HSCP_349;"                   , "Data"                                                   , "NoPU"  ,      0,  0.0000000000E+00, 0, 0.000, 0.000, 0.000
+"CMSSW_8_0", 0, "Data13TeV16"                       , "HSCP_349;HSCP_350;HSCP_351"                   , "Data"                                                   , "NoPU"  ,      0,  0.0000000000E+00, 0, 0.000, 0.000, 0.000

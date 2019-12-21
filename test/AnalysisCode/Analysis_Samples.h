@@ -123,7 +123,7 @@ void GetInputFiles(stSample sample, std::string BaseDirectory_, std::vector<std:
    char* pch=strtok(tmp,";");
    while (pch!=NULL){
       fileNames.push_back(pch);
-      pch=strtok(NULL,",");
+      pch=strtok(NULL,";");
    }
 
    for(unsigned int f=0;f<fileNames.size();f++){  

@@ -17,9 +17,8 @@ os.system("ls -ltr /srv/CMSSW_9_4_3/src/SUSYBSMAnalysis/HSCP/data")
 os.system("ls -ltr /srv/CMSSW_9_4_3/src/SUSYBSMAnalysis/HSCP/test/AnalysisCode/../../")
 os.system("ls -ltr /srv/CMSSW_9_4_3/src/SUSYBSMAnalysis/HSCP/test/AnalysisCode/../../data/")
 
-#localPath = "/storage/data/cms/store/user/jpriscia/HSCP_2017/SingleMuon/2017Apr25/180427_073624/0000/"
-localPath = "/home/akalinow/scratch/CMS/HSCP/Data/HSCP_2017/SingleMuon/2017Apr25/180426_092321/0000/"
-#localPath = "DUMMY_PATH"
+#localPath = "/home/akalinow/scratch/CMS/HSCP/Data/HSCP_2017/SingleMuon/2017Apr25/180426_092321/0000/"
+localPath = "DUMMY_PATH"
 fileList = os.listdir(localPath)
 
 fileNamesString = ""
@@ -27,6 +26,8 @@ for fileName in fileList:
     if fileName.find(".root")>0:
         fileName = fileName.rstrip(".root")
         fileNamesString += fileName+";"
+
+fileNamesString = fileNamesString.rstrip(";")
 
 print("Number of files to process:",len(fileNamesString.split(";")))
 aFile = open('Analysis_Samples_DUMMY.txt')
@@ -55,3 +56,5 @@ from ROOT import Analysis_Step1_EventLoop
 Analysis_Step1_EventLoop(localPath, 0,  "Data13TeV16")
 
 
+#Run dummy CMSSW configuration to produce the framework report
+cmsRun -j FrameworkJobReport.xml -p PSet.py
