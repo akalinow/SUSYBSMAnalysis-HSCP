@@ -47,7 +47,6 @@ def prepareCrabCfg(dataset,
 eventsPerJob = 1
 
 #from datasetsRun2017 import datasets
-
 datasets = [
     #SingleMuonB
     "/storage/data/cms/store/user/jpriscia/HSCP_2017/SingleMuon/2017Apr25/180427_073624/0000/"
