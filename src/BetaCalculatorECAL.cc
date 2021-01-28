@@ -9,7 +9,7 @@
 #include "TrackPropagation/SteppingHelixPropagator/interface/SteppingHelixStateInfo.h"
 #include "TrackPropagation/SteppingHelixPropagator/interface/SteppingHelixPropagator.h"
 
-#include "RecoEcal/EgammaCoreTools/interface/EcalRecHitLess.h"
+//AK #include "RecoEcal/EgammaCoreTools/interface/EcalRecHitLess.h"
 #include "RecoLocalCalo/EcalRecAlgos/interface/EcalSeverityLevelAlgo.h"
 
 #include "SUSYBSMAnalysis/HSCP/interface/BetaCalculatorECAL.h"
@@ -150,6 +150,7 @@ void BetaCalculatorECAL::addInfoToCandidate(HSCParticle& candidate, edm::Handle<
 
    if(crossedRecHits.size() > 0)
    {
+     /* AK
      setCalo = true;
      sort(crossedRecHits.begin(),crossedRecHits.end(),EcalRecHitLess());
      result.ecalCrossedEnergy = sumEnergy;
@@ -184,6 +185,7 @@ void BetaCalculatorECAL::addInfoToCandidate(HSCParticle& candidate, edm::Handle<
        //  << " ecalCrossedEnergy: " << result.ecalCrossedEnergy << " ecalBeta: " << result.ecalBeta
        //  << " ecalBetaError: " << result.ecalBetaError <<  " ecalDeDx (MeV/cm): " << 1000*result.ecalDeDx << std::endl;
      }
+     */
    }
 
    if(info.crossedHcalRecHits.size() > 0)
@@ -320,7 +322,7 @@ void BetaCalculatorECAL::addStepToXtal(std::map<int,GlobalPoint>& trackExitPosit
     GlobalPoint point,
     const CaloSubdetectorGeometry* theSubdetGeometry)
 {
-
+  /* AK
   const CaloCellGeometry *cell_p = theSubdetGeometry->getGeometry(aDetId);
   GlobalPoint p = (dynamic_cast <const TruncatedPyramid *> (cell_p))->getPosition(23);
   GlobalPoint diff(point.x()-p.x(),point.y()-p.y(),point.z()-p.z());
@@ -336,6 +338,7 @@ void BetaCalculatorECAL::addStepToXtal(std::map<int,GlobalPoint>& trackExitPosit
     ((*xtal2).second)+=step;
   else
     trackCrossedXtalMap.insert(std::pair<int,float>(aDetId.rawId(),step));
+  */
 }
 
 

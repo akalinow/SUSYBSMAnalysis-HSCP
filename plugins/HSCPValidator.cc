@@ -378,12 +378,18 @@ void HSCPValidator::makeHLTPlots(const edm::Event& iEvent)
   using namespace edm;
   //get HLT infos
 
+  edm::InputTag tag("TriggerResults", "", "HLT");
+  edm::Handle<edm::TriggerResults> hTriggerResults;
+  if (!iEvent.getByLabel(tag, hTriggerResults)) {
+    std::cout<<"Tirgger Results not available"<<std::endl;
+    return;
+  }  
+  edm::TriggerResultsByName tr = iEvent.triggerResultsByName(*hTriggerResults);
 
-      edm::TriggerResultsByName tr = iEvent.triggerResultsByName("HLT");
-
-          if(!tr.isValid()){
-        std::cout<<"Tirgger Results not available"<<std::endl;
-      }
+  if(!tr.isValid()){
+    std::cout<<"Tirgger Results not available"<<std::endl;
+    return;
+  }
 
    edm::Handle< trigger::TriggerEvent > trEvHandle;
    iEvent.getByToken(trEvToken_, trEvHandle);
