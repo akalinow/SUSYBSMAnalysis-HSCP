@@ -167,6 +167,7 @@ void MakePlot()
 
 
    std::vector<string> runList;
+   std::map<long int, int> runMap;
    string chambers[] = {
       "ME+11", "ME+12", "ME+13", "ME+14", "ME+21", "ME+22", "ME+31", "ME+32", "ME+41", "ME+42", 
       "ME+11_01","ME+11_02","ME+11_03","ME+11_04","ME+11_05","ME+11_06","ME+11_07","ME+11_08","ME+11_09","ME+11_10","ME+11_11","ME+11_12","ME+11_13","ME+11_14","ME+11_15","ME+11_16","ME+11_17","ME+11_18",
@@ -231,36 +232,39 @@ void MakePlot()
    };
 
    unsigned int NChambers = sizeof(chambers)/sizeof(string);
+   
+   std::string histoDirName = "ChamberData";
+   TDirectory *histoDir =  (TDirectory*)InputFile->Get(histoDirName.c_str());
+   TList* ObjList = histoDir->GetListOfKeys();
+   std::string runName, detIdName, objName;
+   long int runNumber = 0;
+   unsigned int detId = 0;
+   for(const auto & aKey: *ObjList){
+     ///Fetch list of run processed
+     objName = std::string(aKey->GetName());
+     runName = objName.substr(13, objName.size());//Assume format: 604018832_Run315257     
+     runNumber = std::stoi(runName);
+     detIdName = objName.substr(0, 9);//Assume format: 604018832_Run315257 
+     detId = std::stoi(detIdName);
+     if(runMap.find(runNumber)==runMap.end()){
+       runMap[runNumber] = 1;
+     }
+     ///Fetch list of detIds
+     DetId geomDetId(detId);  string detName;
+     if(geomDetId.subdetId()==1 && (detId&0x003C0000)==0){ detName = getStationName(detId);  //dt stations
+     }else if(geomDetId.subdetId()==2 && (detId&0x000001F8)==0){ detName = getStationName(detId);  //csc stations
+     }else{                                                      detName = getChamberName(detId);  //dt or csc chambers
+     }
+     //printf("%i (--> %s --> 0x%x --> 0x%x\n", detId, detName.c_str(), detId, detId&0x003C0000);
+     std::cout<<"detId: "<<detId<<" detName: "<<detName<<std::endl;
+     if(nameToDetId.find(detName)==nameToDetId.end()){
+       nameToDetId[detName] = detId;
+     }
+   }    
+   std::cout<<"Runs found: "<<runMap.size()<<std::endl;
+   std::cout<<"Det ids found: "<<nameToDetId.size()<<std::endl;
 
-   TList* ObjList = InputFile->GetListOfKeys();
-   for(int i=0;i<ObjList->GetSize();i++){
-      TObject* tmp = GetObjectFromPath(InputFile,ObjList->At(i)->GetName(),false);
-      if(tmp->InheritsFrom("TDirectory")){
-         runList.push_back(ObjList->At(i)->GetName());
-         printf("Add a new run: %s\n", ObjList->At(i)->GetName() );
-
-         //list all histo (done for each run to avoid empty=missing histograms)
-         if(runList.size()==1)nameToDetId.clear();      
-         TDirectory* runDir = (TDirectory*)InputFile->Get(ObjList->At(i)->GetName());
-         TList* HistoList = runDir->GetListOfKeys();
-         for(int j=0;j<HistoList->GetSize();j++){
-            unsigned int detId;
-            if(sscanf(HistoList->At(j)->GetName(), "%u", &detId)>0){
-               DetId geomDetId(detId);  string detName;
-                     if(geomDetId.subdetId()==1 && (detId&0x003C0000)==0){ detName = getStationName(detId);  //dt stations
-               }else if(geomDetId.subdetId()==2 && (detId&0x000001F8)==0){ detName = getStationName(detId);  //csc stations
-               }else{                                                      detName = getChamberName(detId);  //dt or csc chambers
-               }
-               //printf("%i (--> %s --> 0x%x --> 0x%x\n", detId, detName.c_str(), detId, detId&0x003C0000);
-               nameToDetId[detName] = detId;
-            }
-         }         
-      }
-      delete tmp;
-   }
-
-
-   unsigned int N = runList.size();
+   unsigned int N = runMap.size();
    graphMap.clear();
    for(unsigned int c=0;c<NChambers;c++){
       graphMap[chambers[c]] = new TGraphErrors(N);
@@ -276,31 +280,35 @@ void MakePlot()
    frame->GetYaxis()->SetTitleOffset(0.95);
    frame->SetMaximum( 30.0);
    frame->SetMinimum(-30.0);
-   for(unsigned int r=0;r<N;r++){frame->GetXaxis()->SetBinLabel(r+1, runList[r].c_str());}
-
-
+   int iBin=1;
+   for(auto& [key, value]: runMap){
+     std::cout<<key<<std::endl;
+     frame->GetXaxis()->SetBinLabel(iBin, std::to_string(key).c_str());
+     ++iBin;
+   }
    FILE* pFile = fopen("MuonTimeOffset.txt", "w");  //used to dump all the corrections per stations
    for(unsigned int c=0;c<NChambers;c++){if(nameToDetId[chambers[c]]==0) printf("BUG with %s -->%i\n", chambers[c].c_str(),  nameToDetId[chambers[c]]); }
-
-
-
-   fprintf(pFile, "%10s", "runs");    for(unsigned int r=0;r<N        ;r++){fprintf(pFile, ", %8s", runList[r] .c_str());}fprintf(pFile, "\n");
+   fprintf(pFile, "%10s", "runs");
+   for(auto& [key, value]: runMap){fprintf(pFile, ", %li",key);}fprintf(pFile, "\n");
    fprintf(pFile, "%10s", "chambers");for(unsigned int c=0;c<NChambers;c++){fprintf(pFile, ", %-6i", nameToDetId[chambers[c]]);}fprintf(pFile, "\n");
 
    double mean, rms;
-   for(unsigned int r=0;r<N;r++){
-      fprintf(pFile, "run %6s", runList[r].c_str());
+   int runCounter = 0;
+   for(auto& [key, value]: runMap){
+      fprintf(pFile, "run %li",key);
       for(unsigned int c=0;c<NChambers;c++){
          TGraphErrors* graph = graphMap[chambers[c]];
-         char histoName [256]; sprintf(histoName, "%s/%i", runList[r].c_str(), nameToDetId[chambers[c]]);
-         GetMeanAndRMS(InputFile, histoName, mean, rms); graph->SetPoint(r, r+0.5, mean);   graph->SetPointError(r, 0, rms);
+	 std::string histoName = histoDirName+"/"+std::to_string(nameToDetId[chambers[c]])+"_Run"+std::to_string(key);
+	 std::cout<<"histoName: "<<histoName<<std::endl;
+         GetMeanAndRMS(InputFile, histoName, mean, rms);
+	 graph->SetPoint(runCounter, runCounter+0.5, mean);
+	 graph->SetPointError(runCounter, 0, rms);
          fprintf(pFile, ", %+08.4f", mean>-999?mean:0.0);
       }
       fprintf(pFile, "\n");
+      ++runCounter;
    }
    fclose(pFile);
-
-
 
    makeFigure("pictures/CSC_StationsP.png", frame, "ME+11;ME+12;ME+13;ME+14;ME+21;ME+22;ME+31;ME+32;ME+41;ME+42");
    makeFigure("pictures/CSC_StationsM.png", frame, "ME-11;ME-12;ME-13;ME-14;ME-21;ME-22;ME-31;ME-32;ME-41;ME-42");
