@@ -1,9 +1,7 @@
 // Original Author:  Loic Quertenmont
- 
-
-#include <exception>
 #include <vector>
 #include <unordered_map>
+#include <sstream>
 
 #include "TROOT.h"
 #include "TFile.h"
@@ -55,19 +53,20 @@ using namespace edm;
 
 #endif
 
-
+/////////////////////////////////////////////////////
 bool isCompatibleWithCosmic (const reco::TrackRef& track, const std::vector<reco::Vertex>& vertexColl);
-
-
+/////////////////////////////////////////////////////
 std::unordered_map<unsigned int, TH1D*> HChamber_Timing;
-TH1D* getHisto(unsigned int detId){    
-   if(HChamber_Timing.find(detId) == HChamber_Timing.end()){ 
-      char name[256]; sprintf(name, "%u", detId);
-      HChamber_Timing[detId] = new TH1D(name, name, 800, -100, 100);
-   }
-   return HChamber_Timing[detId];
+/////////////////////////////////////////////////////
+TH1D* getHisto(unsigned int detId, long int runNumber){    
+  if(HChamber_Timing.find(detId) == HChamber_Timing.end()){ 
+    char name[256]; sprintf(name, "%u", detId);
+    std::string hName = std::to_string(detId)+"_Run"+std::to_string(runNumber);
+    HChamber_Timing[detId] = new TH1D(hName.c_str(), hName.c_str(), 800, -100, 100);
+  }
+  return HChamber_Timing[detId];
 }
-
+/////////////////////////////////////////////////////
 void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string OUTPUT="out.root", string DIRECTORY="")
 {
   if(DIRNAME=="COMPILE") return;
@@ -83,10 +82,8 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
       printf("There is no .root file in the input file list\nStop the job here\n");
       exit(0);
    }
- 
-   moduleGeom::loadGeometry(DIRNAME+"/../../../data/CMS_GeomTree.root");
+   moduleGeom::loadGeometry("CMS_GeomTree.root");
    muonTimingCalculator tofCalculator;
-//   tofCalculator.loadTimeOffset(DIRNAME+"/../../../data/MuonTimeOffset.txt");
    tofCalculator.loadTimeOffset(DIRNAME+"/MuonTimeOffset.txt");
 
    TFile* OutputHisto = new TFile((OUTPUT).c_str(),"RECREATE");  //File must be opened before the histogram are created
@@ -151,7 +148,7 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
             CurrentRun = ev.eventAuxiliary().run();
             tofCalculator.setRun(CurrentRun);
          }
-
+	 
          fwlite::Handle < std::vector<reco::Muon> > muonCollHandle;
          muonCollHandle.getByLabel(ev, "ALCARECOMuAlCalIsolatedMu", "SelectedMuons");
          if(!muonCollHandle.isValid()){
@@ -186,6 +183,7 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
          if(!vertexCollHandle.isValid()){printf("Vertex Collection not found!\n"); continue;}
          const std::vector<reco::Vertex>& vertexColl = *vertexCollHandle;
 
+	 
          for(unsigned int c=0;c<muonCollHandle->size();c++){
             //basic track quality cuts
             reco::MuonRef muon = reco::MuonRef( muonCollHandle.product(), c );
@@ -194,15 +192,13 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
             if(muon->pt()<55)continue;//40
             if(isCompatibleWithCosmic(muon->track(), vertexColl))continue;
 
-
             //PLOT SEGMENT T0            
             vector<const CSCSegment*>& cscSegs = tofCalculator.matchCSC(*muon->standAloneMuon(), CSCSegmentColl);
 
             for(unsigned int ic=0;ic<cscSegs.size();ic++){  
                double timeOffset = tofCalculator.t0Offset(cscSegs[ic]->cscDetId().rawId());
-
-               getHisto(cscSegs[ic]->cscDetId().chamberId().rawId()           )->Fill(cscSegs[ic]->time());
-               getHisto(cscSegs[ic]->cscDetId().chamberId().rawId()&0xFFFFFE07)->Fill(cscSegs[ic]->time()); //0xFFFFFE07 --> set chamber Id to 0
+               getHisto(cscSegs[ic]->cscDetId().chamberId().rawId()           ,CurrentRun)->Fill(cscSegs[ic]->time());
+               getHisto(cscSegs[ic]->cscDetId().chamberId().rawId()&0xFFFFFE07,CurrentRun)->Fill(cscSegs[ic]->time()); //0xFFFFFE07 --> set chamber Id to 0
                HCSC_Timing    ->Fill(cscSegs[ic]->time());
                HCSC_TimingCorr->Fill(cscSegs[ic]->time() - timeOffset);
 
@@ -215,7 +211,7 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
                }
             }
 
-            vector<const DTRecSegment4D*>& dtSegs = tofCalculator.matchDT(*muon->standAloneMuon(), DTCSegmentColl);
+	    vector<const DTRecSegment4D*>& dtSegs = tofCalculator.matchDT(*muon->standAloneMuon(), DTCSegmentColl);
             for(unsigned int id=0;id<dtSegs.size();id++){
                for(int phi=0;phi<2;phi++){
                   const DTRecSegment2D* segm=NULL;
@@ -225,8 +221,8 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
 
                   double timeOffset = tofCalculator.t0Offset(segm->geographicalId());
 
-                  getHisto(DTChamberId(segm->geographicalId()).rawId()           )->Fill(segm->t0());
-                  getHisto(DTChamberId(segm->geographicalId()).rawId()&0xFFC3FFFF)->Fill(segm->t0()); //0xFFC3FFFF --> set sector Id to 0
+                  getHisto(DTChamberId(segm->geographicalId()).rawId()           ,CurrentRun)->Fill(segm->t0());
+                  getHisto(DTChamberId(segm->geographicalId()).rawId()&0xFFC3FFFF,CurrentRun)->Fill(segm->t0()); //0xFFC3FFFF --> set sector Id to 0
 
                   HDT_Timing    ->Fill(segm->t0());
                   HDT_TimingCorr->Fill(segm->t0() - timeOffset);
@@ -272,8 +268,6 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
             HCSC_iBetaFLY3->Fill(tofCalculator.getTimeExtra(5.0    , muonTimingCalculator::TimeMeasurementType::CSC).inverseBeta());
             H_iBetaFLY3->Fill(tofCalculator.getTimeExtra(5.0).inverseBeta());
 
-
-
          }//muon
       }printf("\n");
       delete file;
@@ -282,14 +276,14 @@ void MuonTimingStudy(string DIRNAME="COMPILE", string INPUT="dEdx.root", string 
    OutputHisto->Write();
    OutputHisto->Close();  
 }
-
+/////////////////////////////////////////////////////
 bool isCompatibleWithCosmic (const reco::TrackRef& track, const std::vector<reco::Vertex>& vertexColl){
    for (unsigned int vertex_i=0;vertex_i<vertexColl.size();vertex_i++){
       if(fabs(track->dz (vertexColl[vertex_i].position())) < 0.5 && fabs(track->dxy(vertexColl[vertex_i].position())) < 0.2)return false;
    }
    return true;
 }
-
+/////////////////////////////////////////////////////
 
 
 

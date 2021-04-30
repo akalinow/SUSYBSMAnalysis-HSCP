@@ -80,7 +80,7 @@ std::unordered_map<unsigned int, moduleGeom*> moduleGeom::static_geomMap; //need
 
 class muonTimingCalculator {
 private:
-  std::unordered_map<unsigned int, float>* t0OffsetMap;
+  std::unordered_map<unsigned int, float>* t0OffsetMap{0};
   std::map<unsigned int, std::unordered_map<unsigned int, float> > t0OffsetMapPerRuns;
 
 public:
@@ -161,12 +161,16 @@ public:
   ////////////////////////////////////////////
 
   void loadTimeOffset(string path) {
-    t0OffsetMap = NULL;
+    t0OffsetMap = 0;
     t0OffsetMapPerRuns.clear();
-
+     
     std::vector<unsigned int> chambers;
 
     FILE* pFile = fopen(path.c_str(), "r");
+    if(!pFile){
+      std::cout<<"Offset data file: "<<path<<" not found!"<<std::endl;
+      return;
+    }
     char line[16384];
     while (fgets(line, 16384, pFile)) {
       unsigned int run; unsigned int chamber;  float correction;
@@ -192,6 +196,7 @@ public:
   std::map<unsigned int, std::unordered_map<unsigned int, float> > getOffsetMapPerRun() {return t0OffsetMapPerRuns;}
 
   void setRun(unsigned int currentRun) {
+    if(!t0OffsetMapPerRuns.size()) return;
     std::map<unsigned int, std::unordered_map<unsigned int, float> >::iterator it, itPrev = t0OffsetMapPerRuns.begin();
     for (it = t0OffsetMapPerRuns.begin(); it != t0OffsetMapPerRuns.end(); it++) {
       if (it->first > currentRun) {t0OffsetMap = &(itPrev->second); return;} //runs are ordered, so the previous iterator correspond to our run
@@ -201,6 +206,11 @@ public:
   }
 
   double t0Offset(unsigned int detId, bool debug = false) {
+
+    if(!t0OffsetMap || !t0OffsetMap->size()){return 0.0;}
+    else{
+      std::cout<<"t0OffsetMap->size(): "<<t0OffsetMap->size()<<std::endl;
+    }
     if (debug) {
       DetId geomDetId(detId);
       if (geomDetId.subdetId() == 1) printf("dt  %i --> t0=%f\n", detId, (*t0OffsetMap)[detId & 0xFFC3FFFF]); //dt stations
@@ -215,7 +225,10 @@ public:
     printf("ERROR getting t0Offset for DetId=%u\n", detId);
     return 0.0; //should never happens
   }
-  double t0OffsetChamber(unsigned int detId) {  return (*t0OffsetMap)[detId]; }
+  double t0OffsetChamber(unsigned int detId) {
+    if(!t0OffsetMap || !t0OffsetMap->size()) return 0;
+    return (*t0OffsetMap)[detId];
+  }
 
   ////////////////////////////////////////////
   //all code related to muon segment matching

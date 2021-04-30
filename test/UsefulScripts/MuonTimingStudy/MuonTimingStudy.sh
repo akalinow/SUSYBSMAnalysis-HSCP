@@ -13,6 +13,8 @@ if [ $# -ge 5 ]; then arguments=$arguments",\"$5\"" ;fi
 if [ $# -ge 6 ]; then arguments=$arguments",\"$6\"" ;fi
 if [ $# -ge 1 ]; then arguments=$arguments");" ;fi
 
+echo $arguments
+
 root -l -b << EOF
   TString makeshared(gSystem->GetMakeSharedLib());
   makeshared.ReplaceAll("-W ", "-Wno-deprecated-declarations -Wno-deprecated -Wno-unused-local-typedefs -Wno-attributes ");
