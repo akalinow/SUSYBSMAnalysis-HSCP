@@ -282,7 +282,6 @@ void MakePlot()
    frame->SetMinimum(-30.0);
    int iBin=1;
    for(auto& [key, value]: runMap){
-     std::cout<<key<<std::endl;
      frame->GetXaxis()->SetBinLabel(iBin, std::to_string(key).c_str());
      ++iBin;
    }
@@ -299,7 +298,6 @@ void MakePlot()
       for(unsigned int c=0;c<NChambers;c++){
          TGraphErrors* graph = graphMap[chambers[c]];
 	 std::string histoName = histoDirName+"/"+std::to_string(nameToDetId[chambers[c]])+"_Run"+std::to_string(key);
-	 std::cout<<"histoName: "<<histoName<<std::endl;
          GetMeanAndRMS(InputFile, histoName, mean, rms);
 	 graph->SetPoint(runCounter, runCounter+0.5, mean);
 	 graph->SetPointError(runCounter, 0, rms);
